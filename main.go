@@ -1,17 +1,13 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
-	"time"
 
+	"./helpers"
 	"github.com/gin-gonic/gin"
 )
 
@@ -36,12 +32,20 @@ func uploadFile(c *gin.Context) {
 		return
 	}
 
-	filename := header.Filename
-	groupName := getGroupFileName()
+	size := header.Size
+
+	if size > (1024 * 1024 * 5) {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"status": "[ERROR] File is too big"})
+		return
+	}
+
+	extension, filename := helpers.GetFileMeta(header.Filename)
+
+	groupName := helpers.GetGroupFileName()
 
 	dirname := fmt.Sprint("files/", groupName)
 
-	newfilename := fmt.Sprint(dirname, "/"+generateFileName(24, getFileExt(filename)))
+	newfilename := fmt.Sprint(dirname, "/"+filename)
 
 	if _, err := os.Stat(dirname); os.IsNotExist(err) {
 		os.Mkdir(dirname, 0700)
@@ -49,7 +53,6 @@ func uploadFile(c *gin.Context) {
 
 	out, err := os.Create(newfilename)
 	if err != nil {
-		log.Println("[ERROR] Creating file error", err)
 		c.JSON(http.StatusNotFound, gin.H{"status": "[ERROR] Creating file error " + filename})
 		return
 	}
@@ -59,27 +62,16 @@ func uploadFile(c *gin.Context) {
 	_, err = io.Copy(out, file)
 
 	if err != nil {
-		log.Println("[ERROR]: Saving file error", err)
 		c.JSON(http.StatusNotFound, gin.H{"status": "[ERROR]: Saving file error" + filename})
 		return
 	}
-}
 
-func getGroupFileName() string {
-	currentTime := time.Now()
+	pathname := "http://localhost:3000" + "/" + groupName + "/" + filename
 
-	return currentTime.Format("20060102")
-}
-
-func getFileExt(filename string) string {
-	fileArr := strings.Split(filename, ".")
-
-	return fileArr[len(fileArr)-1]
-}
-
-func generateFileName(len int, ext string) string {
-	randBytes := make([]byte, len)
-	rand.Read(randBytes)
-
-	return filepath.Join(hex.EncodeToString(randBytes) + "." + ext)
+	c.JSON(http.StatusCreated, gin.H{
+		"filename":  filename,
+		"extension": extension,
+		"size":      size,
+		"path":      pathname,
+	})
 }
