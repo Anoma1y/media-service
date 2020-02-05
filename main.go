@@ -1,16 +1,18 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func main() {
@@ -38,8 +40,8 @@ func uploadFile(c *gin.Context) {
 	groupName := getGroupFileName()
 
 	dirname := fmt.Sprint("files/", groupName)
-	fmt.Println(getFileUUIDName(filename))
-	newfilename := fmt.Sprint(dirname, "/"+getFileUUIDName(filename))
+
+	newfilename := fmt.Sprint(dirname, "/"+generateFileName(24, getFileExt(filename)))
 
 	if _, err := os.Stat(dirname); os.IsNotExist(err) {
 		os.Mkdir(dirname, 0700)
@@ -69,11 +71,15 @@ func getGroupFileName() string {
 	return currentTime.Format("20060102")
 }
 
-func getFileUUIDName(filename string) string {
-	asd := strings.Split(filename, ".")
-	ext := asd[len(asd)-1]
+func getFileExt(filename string) string {
+	fileArr := strings.Split(filename, ".")
 
-	name := uuid.New().String() + "." + ext
+	return fileArr[len(fileArr)-1]
+}
 
-	return name
+func generateFileName(len int, ext string) string {
+	randBytes := make([]byte, len)
+	rand.Read(randBytes)
+
+	return filepath.Join(hex.EncodeToString(randBytes) + "." + ext)
 }
