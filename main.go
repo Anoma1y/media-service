@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -133,15 +134,20 @@ func uploadFileS3(c *gin.Context) {
 
 	groupName := helpers.GetGroupFileName()
 
+	buffer := make([]byte, size)
+	file.Read(buffer)
+	fmt.Println(http.DetectContentType(buffer))
 	_, s3err := s3.New(sess).PutObject(&s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(groupName + "/" + filename),
-		ACL:    aws.String("public-read"),
-		Body:   file,
+		Bucket:        aws.String(bucket),
+		Key:           aws.String(groupName + "/" + filename),
+		ACL:           aws.String("public-read"),
+		Body:          bytes.NewReader(buffer),
+		ContentLength: aws.Int64(int64(size)),
+		ContentType:   aws.String(http.DetectContentType(buffer)),
 	})
 
 	if s3err != nil {
-		fmt.Println("asd")
+		fmt.Println(s3err)
 	}
 
 	pathname := "https://" + bucket + "." + endpoint + "/" + groupName + "/" + filename // todo
