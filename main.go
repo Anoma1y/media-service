@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"./helpers"
 
@@ -31,6 +32,7 @@ func main() {
 	r := gin.Default()
 	r.POST("/api/v0/file", uploadFile)
 	r.POST("/api/v1/file", uploadFileS3)
+	r.GET("/api/v1/resize/:width/:height", resizeImage)
 
 	port := "3000"
 
@@ -137,6 +139,7 @@ func uploadFileS3(c *gin.Context) {
 	buffer := make([]byte, size)
 	file.Read(buffer)
 	fmt.Println(http.DetectContentType(buffer))
+
 	_, s3err := s3.New(sess).PutObject(&s3.PutObjectInput{
 		Bucket:        aws.String(bucket),
 		Key:           aws.String(groupName + "/" + filename),
@@ -157,5 +160,24 @@ func uploadFileS3(c *gin.Context) {
 		"extension": extension,
 		"size":      size,
 		"path":      pathname,
+	})
+}
+
+func resizeImage(c *gin.Context) {
+	width, err := strconv.Atoi(c.Param("width"))
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "Invalid width"})
+		return
+	}
+
+	height, err := strconv.Atoi(c.Param("height"))
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "Invalid height"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"width":  width,
+		"height": height,
 	})
 }
