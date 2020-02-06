@@ -65,6 +65,7 @@ func uploadFile(c *gin.Context) {
 	}
 
 	out, err := os.Create(newfilename)
+
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"status": "[ERROR] Creating file error " + filename})
 		return
@@ -92,10 +93,13 @@ func uploadFile(c *gin.Context) {
 func uploadFileS3(c *gin.Context) {
 	accessKey := os.Getenv("AWS_SECRET_KEY")
 	secretKey := os.Getenv("AWS_ACCESS_KEY")
+	endpoint := os.Getenv("AWS_ENDPOINT")
+	region := os.Getenv("AWS_REGION")
+	bucket := os.Getenv("AWS_BUCKET")
 
 	sess, err := session.NewSession(&aws.Config{
-		Region:   aws.String("fra1"),
-		Endpoint: aws.String("https://fra1.digitaloceanspaces.com"),
+		Region:   aws.String(region),
+		Endpoint: aws.String(endpoint),
 		Credentials: credentials.NewStaticCredentials(
 			secretKey,
 			accessKey,
@@ -130,7 +134,7 @@ func uploadFileS3(c *gin.Context) {
 	groupName := helpers.GetGroupFileName()
 
 	_, s3err := s3.New(sess).PutObject(&s3.PutObjectInput{
-		Bucket: aws.String("aniki"),
+		Bucket: aws.String(bucket),
 		Key:    aws.String(groupName + "/" + filename),
 		ACL:    aws.String("public-read"),
 		Body:   file,
@@ -140,7 +144,7 @@ func uploadFileS3(c *gin.Context) {
 		fmt.Println("asd")
 	}
 
-	pathname := "https://aniki.fra1.digitaloceanspaces.com" + "/" + groupName + "/" + filename // todo
+	pathname := "https://" + bucket + "." + endpoint + "/" + groupName + "/" + filename // todo
 
 	c.JSON(http.StatusCreated, gin.H{
 		"filename":  filename,
